@@ -7,22 +7,10 @@ import { productsMock } from "../../products.mock";
 
 const getProductsList: ValidatedEventAPIGatewayProxyEvent<
     typeof schema
-> = async (event) => {
-    formatJSONResponse({
-        products: productsMock,
+> = async () => {
+    return formatJSONResponse({
+        products: await productsMock.find(),
     });
-
-    const response = {
-        headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Credentials": true,
-        },
-        ...formatJSONResponse({
-            products: await productsMock.find(),
-        }),
-    };
-
-    return response;
 };
 
 export const main = middyfy(getProductsList);
