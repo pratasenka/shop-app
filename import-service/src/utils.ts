@@ -1,0 +1,1 @@
+export const BUCKET_NAME = 'shop-app-import-bucket';
