@@ -3,11 +3,12 @@ import type { AWS } from "@serverless/typescript";
 import getProductsList from "@functions/products";
 import getProductById from "@functions/getProductsById";
 import createProduct from "@functions/createProduct";
+import catalogBatchProcess from "@functions/catalogBatchProcess";
 
 const serverlessConfiguration: AWS = {
     service: "product-service",
     frameworkVersion: "3",
-    plugins: ["serverless-esbuild", 'serverless-dynamodb-local'],
+    plugins: ["serverless-esbuild", "serverless-dynamodb-local"],
     provider: {
         name: "aws",
         runtime: "nodejs14.x",
@@ -20,40 +21,65 @@ const serverlessConfiguration: AWS = {
             AWS_NODEJS_CONNECTION_REUSE_ENABLED: "1",
             NODE_OPTIONS: "--enable-source-maps --stack-trace-limit=1000",
             PRODUCTS_TABLE: "Products",
-            STOCKS_TABLE: "Stocks"
+            STOCKS_TABLE: "Stocks",
+            SQS_URL: "SQSQueue",
+            SNS_ARN: {
+                Ref: "SNSTopic",
+            },
         },
         iam: {
-          role: {
-            statements: [{
-              Effect: "Allow",
-              Action: [
-                "dynamodb:DescribeTable",
-                "dynamodb:Query",
-                "dynamodb:Scan",
-                "dynamodb:GetItem",
-                "dynamodb:PutItem",
-                "dynamodb:UpdateItem",
-                "dynamodb:DeleteItem",
-              ],
-              Resource: "arn:aws:dynamodb:eu-west-1:*:table/Products",
-            },
-            {
-                Effect: "Allow",
-                Action: [
-                  "dynamodb:DescribeTable",
-                  "dynamodb:Query",
-                  "dynamodb:Scan",
-                  "dynamodb:GetItem",
-                  "dynamodb:PutItem",
-                  "dynamodb:UpdateItem",
-                  "dynamodb:DeleteItem",
+            role: {
+                statements: [
+                    {
+                        Effect: "Allow",
+                        Action: [
+                            "dynamodb:DescribeTable",
+                            "dynamodb:Query",
+                            "dynamodb:Scan",
+                            "dynamodb:GetItem",
+                            "dynamodb:PutItem",
+                            "dynamodb:UpdateItem",
+                            "dynamodb:DeleteItem",
+                        ],
+                        Resource: "arn:aws:dynamodb:eu-west-1:*:table/Products",
+                    },
+                    {
+                        Effect: "Allow",
+                        Action: [
+                            "dynamodb:DescribeTable",
+                            "dynamodb:Query",
+                            "dynamodb:Scan",
+                            "dynamodb:GetItem",
+                            "dynamodb:PutItem",
+                            "dynamodb:UpdateItem",
+                            "dynamodb:DeleteItem",
+                        ],
+                        Resource: "arn:aws:dynamodb:eu-west-1:*:table/Stocks",
+                    },
+                    {
+                        Effect: "Allow",
+                        Action: ["sqs:*"],
+                        Resource: {
+                            "Fn::GetAtt": ["SQSQueue", "Arn"],
+                        },
+                    },
+                    {
+                        Effect: "Allow",
+                        Action: ["sns:*"],
+                        Resource: {
+                            Ref: "SNSTopic",
+                        },
+                    },
                 ],
-                Resource: "arn:aws:dynamodb:eu-west-1:*:table/Stocks",
-              }],
-          },
+            },
         },
     },
-    functions: { getProductById, getProductsList, createProduct },
+    functions: {
+        getProductById,
+        getProductsList,
+        createProduct,
+        catalogBatchProcess,
+    },
     package: { individually: true },
     custom: {
         esbuild: {
@@ -66,14 +92,14 @@ const serverlessConfiguration: AWS = {
             platform: "node",
             concurrency: 10,
         },
-        dynamodb:{
-          start:{
-            port: 5000,
-            inMemory: true,
-            migrate: true,
-          },
-          stages: "dev"
-        }
+        dynamodb: {
+            start: {
+                port: 5000,
+                inMemory: true,
+                migrate: true,
+            },
+            stages: "dev",
+        },
     },
     resources: {
         Resources: {
@@ -119,6 +145,28 @@ const serverlessConfiguration: AWS = {
                         ReadCapacityUnits: 1,
                         WriteCapacityUnits: 1,
                     },
+                },
+            },
+            SNSTopic: {
+                Type: "AWS::SNS::Topic",
+                Properties: {
+                    TopicName: "CatalogItemsTopic",
+                },
+            },
+            SNSSubscription: {
+                Type: "AWS::SNS::Subscription",
+                Properties: {
+                    Endpoint: "anton_pratasenka@epam.com",
+                    Protocol: "email",
+                    TopicArn: {
+                        Ref: "SNSTopic",
+                    },
+                },
+            },
+            SQSQueue: {
+                Type: "AWS::SQS::Queue",
+                Properties: {
+                    QueueName: "CatalogItemsQueue",
                 },
             },
         },
