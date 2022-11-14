@@ -15,6 +15,17 @@ export default {
                         },
                     },
                 },
+                authorizer: {
+                    arn: "arn:aws:lambda:eu-west-1:943623494787:function:authorization-service-dev-basicAuthorizer",
+                    identitySource: "method.request.header.Authorization",
+                    type: "token",
+                },
+                responseData: {
+                    200: "Successful operation",
+                    401: "Unauthorized (no token)",
+                    403: "Forbidden (invalid or expired token)",
+                    500: "Server error",
+                },
             },
         },
     ],

@@ -28,6 +28,9 @@ const importProductsFile: ValidatedEventAPIGatewayProxyEvent<
         });
     } catch (error) {
         console.log(error);
+        return formatJSONResponse({
+            error: error,
+        });
     }
 };
 
